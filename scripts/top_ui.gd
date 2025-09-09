@@ -10,6 +10,7 @@ var game_time = 180  # 3 minutos
 var time_timer: Timer
 var game_active = true
 
+
 func _ready():
 	var grid = get_parent().get_node("grid")
 	if grid:
