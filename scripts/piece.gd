@@ -25,9 +25,9 @@ func set_special_type(new_type: String):
 
 func move(target):
 	var move_tween = create_tween()
-	move_tween.set_trans(Tween.TRANS_ELASTIC)
+	move_tween.set_trans(Tween.TRANS_QUART)
 	move_tween.set_ease(Tween.EASE_OUT)
-	move_tween.tween_property(self, "position", target, 0.4)
+	move_tween.tween_property(self, "position", target, 0.15)
 
 func dim():
 	$Sprite2D.modulate = Color(1, 1, 1, 0.5)

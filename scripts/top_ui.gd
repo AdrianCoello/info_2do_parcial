@@ -6,7 +6,7 @@ extends TextureRect
 
 var current_score = 0
 var current_moves = 0
-var game_time = 180  # 3 minutos
+var game_time = 180
 var time_timer: Timer
 var game_active = true
 
@@ -15,11 +15,9 @@ func _ready():
 	if grid:
 		grid.connect("score_changed", Callable(self, "_on_score_changed"))
 		grid.connect("moves_changed", Callable(self, "_on_moves_changed"))
-		# Inicializar valores
 		_on_score_changed(grid.score)
 		_on_moves_changed(grid.moves)
 	
-	# Configurar timer para el tiempo
 	time_timer = Timer.new()
 	time_timer.wait_time = 1.0
 	time_timer.timeout.connect(_on_time_timer_timeout)
@@ -33,9 +31,8 @@ func _on_score_changed(value):
 
 func _on_moves_changed(value):
 	current_moves = value
-	counter_label.text = str(max(0, current_moves))  # Evitar números negativos
+	counter_label.text = str(max(0, current_moves))
 	
-	# Verificar game over por movimientos
 	if current_moves <= 0 and game_active:
 		stop_game()
 
