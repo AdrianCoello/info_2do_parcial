@@ -49,6 +49,7 @@ var special_types = {
 }
 var piece_types = ["normal", "row", "column", "adjacent", "rainbow"]
 var deduct_move := false
+var pending_special_pieces = []  # Array para piezas especiales pendientes
 
 # Called when the node enters the scene tree for the first time.
 func _ready():
@@ -280,8 +281,8 @@ func find_matches():
 				all_pieces[pos.x][pos.y].matched = true
 				all_pieces[pos.x][pos.y].dim()
 		
-		# Crear la pieza especial DESPUÉS de marcar las otras
-		crear_pieza_especial(special.pos, special.color, special.type)
+		# Agregar a pendientes en lugar de crear inmediatamente
+		pending_special_pieces.append(special)
 
 	if matches_found:
 		get_parent().get_node("destroy_timer").start()
@@ -532,7 +533,16 @@ func refill_columns():
 				
 	check_after_refill()
 
+func crear_piezas_especiales_pendientes():
+	print("Creando ", pending_special_pieces.size(), " piezas especiales pendientes")
+	for special in pending_special_pieces:
+		crear_pieza_especial(special.pos, special.color, special.type)
+	pending_special_pieces.clear()
+
 func check_after_refill():
+	# Crear piezas especiales pendientes ANTES de buscar nuevos matches
+	crear_piezas_especiales_pendientes()
+	
 	# Solo buscar matches automaticos si el juego sigue activo
 	if state != WAIT:
 		return
