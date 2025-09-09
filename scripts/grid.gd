@@ -266,20 +266,22 @@ func find_matches():
 					pieces_to_remove.append_array(get_line_positions(i, j, Vector2(0, 1), 3))
 					matches_found = true
 	
-	# Procesar piezas especiales
+	# PRIMERO marcar piezas normales para eliminación
+	for pos in pieces_to_remove:
+		if in_grid(pos.x, pos.y) and all_pieces[pos.x][pos.y] != null:
+			all_pieces[pos.x][pos.y].matched = true
+			all_pieces[pos.x][pos.y].dim()
+	
+	# DESPUÉS procesar piezas especiales
 	for special in special_pieces_to_create:
-		crear_pieza_especial(special.pos, special.color, special.type)
 		# Marcar las piezas del match para eliminación (excepto donde va la especial)
 		for pos in special.match_positions:
 			if pos != special.pos and in_grid(pos.x, pos.y) and all_pieces[pos.x][pos.y] != null:
 				all_pieces[pos.x][pos.y].matched = true
 				all_pieces[pos.x][pos.y].dim()
-	
-	# Marcar piezas normales para eliminación
-	for pos in pieces_to_remove:
-		if in_grid(pos.x, pos.y) and all_pieces[pos.x][pos.y] != null:
-			all_pieces[pos.x][pos.y].matched = true
-			all_pieces[pos.x][pos.y].dim()
+		
+		# Crear la pieza especial DESPUÉS de marcar las otras
+		crear_pieza_especial(special.pos, special.color, special.type)
 
 	if matches_found:
 		get_parent().get_node("destroy_timer").start()
@@ -318,6 +320,9 @@ func crear_pieza_especial(pos: Vector2, color: String, tipo: String):
 	pieza_especial.color = color
 	pieza_especial.set_special_type(tipo)
 	
+	# Asegurar que la pieza especial NO esté marcada
+	pieza_especial.matched = false
+	
 	# Eliminar la pieza existente en esa posición si existe
 	if all_pieces[pos.x][pos.y] != null:
 		all_pieces[pos.x][pos.y].queue_free()
@@ -326,6 +331,8 @@ func crear_pieza_especial(pos: Vector2, color: String, tipo: String):
 	add_child(pieza_especial)
 	pieza_especial.position = grid_to_pixel(pos.x, pos.y)
 	all_pieces[pos.x][pos.y] = pieza_especial
+	
+	print('Pieza especial creada exitosamente en: ', pos, ' - Tipo: ', tipo, ' - Matched: ', pieza_especial.matched)
 
 func marcar_match(i, j, dir, length):
 	for k in range(length):
@@ -374,22 +381,29 @@ func marcar_match_cuadrado_excepto(i, j, except_x, except_y):
 func destroy_matched():
 	var was_matched = false
 	var matched_count = 0
+	print("=== DESTROY_MATCHED ===")
 	for i in width:
 		for j in height:
 			if all_pieces[i][j] != null and all_pieces[i][j].matched:
 				was_matched = true
 				matched_count += 1
+				print("Eliminando pieza en ", i, ",", j, " - Tipo: ", all_pieces[i][j].type, " - Color: ", all_pieces[i][j].color)
 				# Si es una pieza especial, activar su efecto especial
 				if all_pieces[i][j].type == "row":
+					print("Activando efecto ROW")
 					eliminar_especial(i, j, "row")
 				elif all_pieces[i][j].type == "column":
+					print("Activando efecto COLUMN")
 					eliminar_especial(i, j, "column")
 				elif all_pieces[i][j].type == "adjacent":
+					print("Activando efecto ADJACENT")
 					eliminar_especial(i, j, "adjacent")
 				elif all_pieces[i][j].type == "rainbow":
+					print("Activando efecto RAINBOW")
 					eliminar_especial(i, j, "rainbow")
 				else:
 					# Pieza normal
+					print("Eliminando pieza normal")
 					all_pieces[i][j].queue_free()
 					all_pieces[i][j] = null
 	
