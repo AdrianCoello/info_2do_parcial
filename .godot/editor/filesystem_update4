@@ -1,0 +1,11 @@
+res://scenes/game.tscn
+res://scripts/grid.gd
+res://scripts/piece.gd
+res://scenes/blue_piece.tscn
+res://scenes/green_piece.tscn
+res://scenes/light_green_piece.tscn
+res://scenes/orange_piece.tscn
+res://scenes/piece.tscn
+res://scenes/pink_piece.tscn
+res://scenes/yellow_piece.tscn
+res://scripts/top_ui.gd
