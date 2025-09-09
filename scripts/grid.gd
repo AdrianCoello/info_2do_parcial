@@ -134,6 +134,28 @@ func swap_pieces(column, row, direction: Vector2):
 	var other_piece = all_pieces[column + direction.x][row + direction.y]
 	if first_piece == null or other_piece == null:
 		return
+	
+	# Verificar si alguna de las piezas es rainbow ANTES del intercambio
+	var rainbow_activated = false
+	var rainbow_piece = null
+	var rainbow_column = -1
+	var rainbow_row = -1
+	
+	if first_piece.type == "rainbow":
+		rainbow_activated = true
+		rainbow_piece = first_piece
+		# Después del swap, esta pieza estará en la posición destino
+		rainbow_column = column + direction.x
+		rainbow_row = row + direction.y
+		print("Rainbow detectado en posición original, irá a: ", rainbow_column, ", ", rainbow_row)
+	elif other_piece.type == "rainbow":
+		rainbow_activated = true
+		rainbow_piece = other_piece
+		# Después del swap, esta pieza estará en la posición original
+		rainbow_column = column
+		rainbow_row = row
+		print("Rainbow detectado en posición destino, irá a: ", rainbow_column, ", ", rainbow_row)
+	
 	# swap
 	state = WAIT
 	store_info(first_piece, other_piece, Vector2(column, row), direction)
@@ -143,7 +165,26 @@ func swap_pieces(column, row, direction: Vector2):
 	#other_piece.position = grid_to_pixel(column, row)
 	first_piece.move(grid_to_pixel(column + direction.x, row + direction.y))
 	other_piece.move(grid_to_pixel(column, row))
-	if not move_checked:
+	
+	# Si hay rainbow, activarlo inmediatamente
+	if rainbow_activated:
+		print("¡Activando poder del dulce rainbow inmediatamente!")
+		# Deducir movimiento porque es un movimiento válido
+		if not move_checked:
+			moves -= 1
+			emit_signal("moves_changed", moves)
+			deduct_move = false
+			move_checked = true
+		
+		# Activar el poder del rainbow
+		eliminar_especial(rainbow_column, rainbow_row, "rainbow")
+		get_parent().get_node("collapse_timer").start()
+		
+		# Verificar game over después de actualizar moves
+		if moves <= 0:
+			game_over()
+	elif not move_checked:
+		# Solo buscar matches normales si no se activó rainbow
 		# Marcar que se debe deducir un movimiento si este swap es válido
 		deduct_move = true
 		find_matches()
