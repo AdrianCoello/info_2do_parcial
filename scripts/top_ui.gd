@@ -8,6 +8,7 @@ var current_score = 0
 var current_moves = 0
 var game_time = 180  # 3 minutos
 var time_timer: Timer
+var game_active = true
 
 func _ready():
 	var grid = get_parent().get_node("grid")
@@ -32,19 +33,33 @@ func _on_score_changed(value):
 
 func _on_moves_changed(value):
 	current_moves = value
-	counter_label.text = str(current_moves)
+	counter_label.text = str(max(0, current_moves))  # Evitar números negativos
+	
+	# Verificar game over por movimientos
+	if current_moves <= 0 and game_active:
+		stop_game()
 
 func _on_time_timer_timeout():
+	if not game_active:
+		return
+		
 	game_time -= 1
 	_update_time_display()
 	
 	if game_time <= 0:
-		time_timer.stop()
-		var grid = get_parent().get_node("grid")
-		if grid:
-			grid.game_over()
+		stop_game()
 
 func _update_time_display():
-	var minutes = game_time / 60
-	var seconds = game_time % 60
+	var minutes = max(0, game_time) / 60
+	var seconds = max(0, game_time) % 60
 	time_label.text = "%d:%02d" % [minutes, seconds]
+
+func stop_game():
+	if not game_active:
+		return
+		
+	game_active = false
+	time_timer.stop()
+	var grid = get_parent().get_node("grid")
+	if grid and grid.state != grid.WAIT:
+		grid.game_over()
