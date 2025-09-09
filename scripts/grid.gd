@@ -171,96 +171,124 @@ func touch_difference(grid_1, grid_2):
 func _process(delta):
 	if state == MOVE:
 		touch_input()
+	
+	# Verificar game over por movimientos agotados
+	if moves <= 0 and state != WAIT:
+		game_over()
 
 func find_matches():
+	var matches_found = false
+	
 	for i in width:
 		for j in height:
 			if all_pieces[i][j] != null:
 				var current_color = all_pieces[i][j].color
 				
+				# Verificar matches especiales primero (T-shape)
 				if is_t_shape(i, j):
 					reemplazar_con_pieza_especial(i, j, current_color, "adjacent")
-				# Verificar matches horizontales
-				if i <= width - 5:
-					if is_match(i, j, Vector2(1, 0), 5):
-						reemplazar_con_pieza_especial(i + 2, j, current_color, "rainbow")
-					elif is_match(i, j, Vector2(1, 0), 4):
-						reemplazar_con_pieza_especial(i + 1, j, current_color, "row")
-				elif i <= width - 4:
-					if is_match(i, j, Vector2(1, 0), 4):
-						reemplazar_con_pieza_especial(i + 1, j, current_color, "row")
+					matches_found = true
+					continue
 				
-				# Verificar matches verticales
-				if j <= height - 5:
-					if is_match(i, j, Vector2(0, 1), 5):
-						reemplazar_con_pieza_especial(i, j + 2, current_color, "rainbow")
-					elif is_match(i, j, Vector2(0, 1), 4):
-						reemplazar_con_pieza_especial(i, j + 1, current_color, "column")
-				elif j <= height - 4:
-					if is_match(i, j, Vector2(0, 1), 4):
-						reemplazar_con_pieza_especial(i, j + 1, current_color, "column")
+				# Verificar matches horizontales de 5
+				if i <= width - 5 and is_match(i, j, Vector2(1, 0), 5):
+					reemplazar_con_pieza_especial(i + 2, j, current_color, "rainbow")
+					matches_found = true
+					continue
+				
+				# Verificar matches verticales de 5
+				if j <= height - 5 and is_match(i, j, Vector2(0, 1), 5):
+					reemplazar_con_pieza_especial(i, j + 2, current_color, "rainbow")
+					matches_found = true
+					continue
+				
+				# Verificar matches horizontales de 4
+				if i <= width - 4 and is_match(i, j, Vector2(1, 0), 4):
+					reemplazar_con_pieza_especial(i + 1, j, current_color, "row")
+					matches_found = true
+					continue
+				
+				# Verificar matches verticales de 4
+				if j <= height - 4 and is_match(i, j, Vector2(0, 1), 4):
+					reemplazar_con_pieza_especial(i, j + 1, current_color, "column")
+					matches_found = true
+					continue
 				
 				# Verificar matches horizontales de 3
-				if i > 0 and i < width - 1 and is_match(i, j, Vector2(1, 0), 3):
-					marcar_piezas_para_eliminacion(i, j, true)
+				if i <= width - 3 and is_match(i, j, Vector2(1, 0), 3):
+					marcar_match(i, j, Vector2(1, 0), 3)
+					matches_found = true
+				
 				# Verificar matches verticales de 3  
-				if j > 0 and j < height - 1 and is_match(i, j, Vector2(0, 1), 3):
-					marcar_piezas_para_eliminacion(i, j, false)
+				if j <= height - 3 and is_match(i, j, Vector2(0, 1), 3):
+					marcar_match(i, j, Vector2(0, 1), 3)
+					matches_found = true
 
-	get_parent().get_node("destroy_timer").start()
-
-func marcar_piezas_para_eliminacion(i, j, es_horizontal):
-	if es_horizontal:
-		for k in range(0, 3):
-			if in_grid(i + k, j):
-				all_pieces[i + k][j].matched = true
-				all_pieces[i + k][j].dim()
+	if matches_found:
+		get_parent().get_node("destroy_timer").start()
 	else:
-		for k in range(0, 3):
-			if in_grid(i, j + k):
-				all_pieces[i][j + k].matched = true
-				all_pieces[i][j + k].dim()
+		# Si no hay matches después del swap, revertir
+		if deduct_move:
+			swap_back()
+
 
 func reemplazar_con_pieza_especial(i, j, color, tipo):
-	print('tipo especial', tipo)
-	var pieza_especial
-	# Crear la pieza especial según el tipo (usando texturas por ahora)
+	print('Creando pieza especial: ', tipo, ' en posición: ', i, ', ', j)
+	
+	# Marcar todas las piezas del match para eliminación primero
+	if tipo == "row":
+		# Marcar 4 piezas horizontales
+		for k in range(4):
+			if in_grid(i + k - 1, j) and all_pieces[i + k - 1][j]:
+				all_pieces[i + k - 1][j].matched = true
+				all_pieces[i + k - 1][j].dim()
+	elif tipo == "column":
+		# Marcar 4 piezas verticales
+		for k in range(4):
+			if in_grid(i, j + k - 1) and all_pieces[i][j + k - 1]:
+				all_pieces[i][j + k - 1].matched = true
+				all_pieces[i][j + k - 1].dim()
+	elif tipo == "rainbow":
+		# Marcar 5 piezas
+		for k in range(5):
+			if in_grid(i + k - 2, j) and all_pieces[i + k - 2][j]:
+				all_pieces[i + k - 2][j].matched = true
+				all_pieces[i + k - 2][j].dim()
+	elif tipo == "adjacent":
+		# Marcar las piezas del patrón T
+		# Primero marcar las 3 horizontales
+		for k in range(3):
+			if in_grid(i + k, j) and all_pieces[i + k][j]:
+				all_pieces[i + k][j].matched = true
+				all_pieces[i + k][j].dim()
+		# Luego marcar la pieza vertical que forma la T
+		if in_grid(i + 1, j - 1) and all_pieces[i + 1][j - 1]:
+			all_pieces[i + 1][j - 1].matched = true
+			all_pieces[i + 1][j - 1].dim()
+		if in_grid(i + 1, j + 1) and all_pieces[i + 1][j + 1]:
+			all_pieces[i + 1][j + 1].matched = true
+			all_pieces[i + 1][j + 1].dim()
+	
+	# Crear la pieza especial
 	var rand = randi_range(0, possible_pieces.size() - 1)
-	pieza_especial = possible_pieces[rand].instantiate()
+	var pieza_especial = possible_pieces[rand].instantiate()
 	pieza_especial.color = color
-	
-	# Eliminar las piezas del match según el tipo
-	if tipo == "row" or tipo == "column":
-		for k in range(-1, 3):
-			if tipo == "row" and in_grid(i + k, j):
-				if all_pieces[i + k][j]:
-					all_pieces[i + k][j].matched = true
-					all_pieces[i + k][j].dim()
-					all_pieces[i + k][j].queue_free()
-					all_pieces[i + k][j] = null
-			elif tipo == "column" and in_grid(i, j + k):
-				if all_pieces[i][j + k]:
-					all_pieces[i][j + k].matched = true
-					all_pieces[i][j + k].dim()
-					all_pieces[i][j + k].queue_free()
-					all_pieces[i][j + k] = null
-	elif tipo == "adjacent" or tipo == "rainbow":
-		for di in range(-1, 2):
-			for dj in range(-1, 2):
-				if in_grid(i + di, j + dj) and all_pieces[i + di][j + dj]:
-					all_pieces[i + di][j + dj].matched = true
-					all_pieces[i + di][j + dj].dim()
-					all_pieces[i + di][j + dj].queue_free()
-					all_pieces[i + di][j + dj] = null
-	
-	# Reemplazar con la pieza especial
-	if all_pieces[i][j]:
-		all_pieces[i][j].queue_free()
-	all_pieces[i][j] = pieza_especial
 	pieza_especial.set_special_type(tipo)
+	
+	# Eliminar la pieza en la posición donde se va a crear la especial
+	if all_pieces[i][j]:
+		all_pieces[i][j].matched = true
+		all_pieces[i][j].dim()
+	
+	# NO eliminar las piezas aquí, solo marcarlas
+	# La eliminación se hará en destroy_matched()
+	
+	# Colocar la pieza especial después de un pequeño delay
+	await get_tree().create_timer(0.1).timeout
+	
 	add_child(pieza_especial)
 	pieza_especial.position = grid_to_pixel(i, j)
-	get_parent().get_node("collapse_timer").start()
+	all_pieces[i][j] = pieza_especial
 
 func marcar_match(i, j, dir, length):
 	for k in range(length):
@@ -327,6 +355,7 @@ func destroy_matched():
 					# Pieza normal
 					all_pieces[i][j].queue_free()
 					all_pieces[i][j] = null
+	
 	move_checked = true
 	if was_matched:
 		score += matched_count * 10
@@ -337,12 +366,18 @@ func destroy_matched():
 			emit_signal("moves_changed", moves)
 			deduct_move = false
 		get_parent().get_node("collapse_timer").start()
+		# Verificar game over después de actualizar moves
 		if moves <= 0:
 			game_over()
 	else:
-		swap_back()
+		# Si no hay matches después del swap, revertir
+		if deduct_move:
+			swap_back()
 
 func eliminar_especial(i, j, tipo):
+	# Guardar el color antes de eliminar la pieza especial
+	var color_especial = all_pieces[i][j].color
+	
 	if tipo == "row":
 		for col in range(width):
 			if all_pieces[col][j] != null:
@@ -362,12 +397,15 @@ func eliminar_especial(i, j, tipo):
 					all_pieces[x][y].queue_free()
 					all_pieces[x][y] = null
 	elif tipo == "rainbow":
-		var color = all_pieces[i][j].color
+		# Eliminar todas las piezas del mismo color que la pieza rainbow
 		for col in range(width):
 			for row in range(height):
-				if all_pieces[col][row] != null and all_pieces[col][row].color == color:
+				if all_pieces[col][row] != null and all_pieces[col][row].color == color_especial:
 					all_pieces[col][row].queue_free()
 					all_pieces[col][row] = null
+	
+	# Eliminar la pieza especial en sí
+	all_pieces[i][j] = null
 func is_match(i, j, dir: Vector2, length: int) -> bool:
 	if all_pieces[i][j] == null:
 		return false
@@ -439,15 +477,26 @@ func refill_columns():
 	check_after_refill()
 
 func check_after_refill():
+	# Solo buscar matches automaticos si el juego sigue activo
+	if state == WAIT:
+		return
+		
+	var found_matches = false
 	for i in width:
 		for j in height:
 			if all_pieces[i][j] != null and match_at(i, j, all_pieces[i][j].color):
-				find_matches()
-				get_parent().get_node("destroy_timer").start()
-				return
-	state = MOVE
-	move_checked = false
-	deduct_move = false  # Reset deduct_move cuando terminan las cadenas
+				found_matches = true
+				break
+		if found_matches:
+			break
+	
+	if found_matches:
+		find_matches()
+		# No reiniciar destroy_timer aquí, find_matches() ya lo maneja
+	else:
+		state = MOVE
+		move_checked = false
+		deduct_move = false  # Reset deduct_move cuando terminan las cadenas
 
 func _on_destroy_timer_timeout():
 	print("destroy")
@@ -461,10 +510,23 @@ func _on_refill_timer_timeout():
 	refill_columns()
 	
 func game_over():
+	if state == WAIT:
+		return  # Ya está en game over
+		
 	state = WAIT
 	print("¡GAME OVER! Puntuación final: ", score)
+	print("Movimientos restantes: ", moves)
+	
 	# Detener el temporizador de tiempo si existe
 	var top_ui = get_parent().get_node("top_ui")
-	if top_ui and top_ui.time_timer:
-		top_ui.time_timer.stop()
+	if top_ui:
+		top_ui.game_active = false
+		if top_ui.time_timer:
+			top_ui.time_timer.stop()
+	
+	# Detener todos los timers del juego
+	get_parent().get_node("destroy_timer").stop()
+	get_parent().get_node("collapse_timer").stop()
+	get_parent().get_node("refill_timer").stop()
+	
 	# Aquí puedes agregar más lógica para mostrar una pantalla de game over
