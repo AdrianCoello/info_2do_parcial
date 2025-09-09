@@ -104,22 +104,28 @@ func match_at(i, j, color):
 			if all_pieces[i - 1][j].color == color and all_pieces[i - 2][j].color == color:
 				return true
 	# check down
-	if j> 1:
+	if j > 1:
 		if all_pieces[i][j - 1] != null and all_pieces[i][j - 2] != null:
 			if all_pieces[i][j - 1].color == color and all_pieces[i][j - 2].color == color:
 				return true
+	return false
 
 func touch_input():
+	if state != MOVE:
+		return
+		
 	var mouse_pos = get_global_mouse_position()
 	var grid_pos = pixel_to_grid(mouse_pos.x, mouse_pos.y)
 	if Input.is_action_just_pressed("ui_touch") and in_grid(grid_pos.x, grid_pos.y):
 		first_touch = grid_pos
 		is_controlling = true
+		print("Touch started at: ", grid_pos)
 		
 	# release button
 	if Input.is_action_just_released("ui_touch") and in_grid(grid_pos.x, grid_pos.y) and is_controlling:
 		is_controlling = false
 		final_touch = grid_pos
+		print("Touch ended at: ", grid_pos, " from: ", first_touch)
 		touch_difference(first_touch, final_touch)
 
 func swap_pieces(column, row, direction: Vector2):
@@ -149,7 +155,15 @@ func store_info(first_piece, other_piece, place, direction):
 
 func swap_back():
 	if piece_one != null and piece_two != null:
-		swap_pieces(last_place.x, last_place.y, last_direction)
+		# Intercambiar sin volver a llamar find_matches
+		var temp_piece = all_pieces[last_place.x][last_place.y]
+		all_pieces[last_place.x][last_place.y] = all_pieces[last_place.x + last_direction.x][last_place.y + last_direction.y]
+		all_pieces[last_place.x + last_direction.x][last_place.y + last_direction.y] = temp_piece
+		
+		# Mover las piezas visualmente de vuelta
+		piece_one.move(grid_to_pixel(last_place.x, last_place.y))
+		piece_two.move(grid_to_pixel(last_place.x + last_direction.x, last_place.y + last_direction.y))
+	
 	state = MOVE
 	move_checked = false
 	deduct_move = false  # Reset deduct_move cuando el movimiento no es válido
@@ -280,12 +294,7 @@ func reemplazar_con_pieza_especial(i, j, color, tipo):
 		all_pieces[i][j].matched = true
 		all_pieces[i][j].dim()
 	
-	# NO eliminar las piezas aquí, solo marcarlas
-	# La eliminación se hará en destroy_matched()
-	
-	# Colocar la pieza especial después de un pequeño delay
-	await get_tree().create_timer(0.1).timeout
-	
+	# Colocar la pieza especial inmediatamente
 	add_child(pieza_especial)
 	pieza_especial.position = grid_to_pixel(i, j)
 	all_pieces[i][j] = pieza_especial
@@ -370,9 +379,8 @@ func destroy_matched():
 		if moves <= 0:
 			game_over()
 	else:
-		# Si no hay matches después del swap, revertir
-		if deduct_move:
-			swap_back()
+		# Si no hay matches después del swap, revertir inmediatamente
+		swap_back()
 
 func eliminar_especial(i, j, tipo):
 	# Guardar el color antes de eliminar la pieza especial
@@ -453,7 +461,6 @@ func collapse_columns():
 	get_parent().get_node("refill_timer").start()
 
 func refill_columns():
-	
 	for i in width:
 		for j in height:
 			if all_pieces[i][j] == null:
@@ -467,7 +474,14 @@ func refill_columns():
 				while (match_at(i, j, piece.color) and loops < max_loops):
 					rand = randi_range(0, possible_pieces.size() - 1)
 					loops += 1
+					piece.queue_free()  # Liberar la pieza anterior
 					piece = possible_pieces[rand].instantiate()
+				
+				# Resetear propiedades de la pieza
+				piece.matched = false
+				piece.type = "normal"
+				piece.modulate = Color.WHITE
+				
 				add_child(piece)
 				piece.position = grid_to_pixel(i, j - y_offset)
 				piece.move(grid_to_pixel(i, j))
@@ -478,7 +492,7 @@ func refill_columns():
 
 func check_after_refill():
 	# Solo buscar matches automaticos si el juego sigue activo
-	if state == WAIT:
+	if state != WAIT:
 		return
 		
 	var found_matches = false
@@ -499,14 +513,15 @@ func check_after_refill():
 		deduct_move = false  # Reset deduct_move cuando terminan las cadenas
 
 func _on_destroy_timer_timeout():
-	print("destroy")
+	print("destroy_timer timeout - Estado actual: ", state)
 	destroy_matched()
 
 func _on_collapse_timer_timeout():
-	print("collapse")
+	print("collapse_timer timeout - Estado actual: ", state)
 	collapse_columns()
 
 func _on_refill_timer_timeout():
+	print("refill_timer timeout - Estado actual: ", state)
 	refill_columns()
 	
 func game_over():
