@@ -192,51 +192,94 @@ func _process(delta):
 
 func find_matches():
 	var matches_found = false
+	var pieces_to_remove = []
+	var special_pieces_to_create = []
 	
+	# Primero, encontrar todos los matches sin eliminar nada
 	for i in width:
 		for j in height:
-			if all_pieces[i][j] != null:
+			if all_pieces[i][j] != null and not all_pieces[i][j].matched:
 				var current_color = all_pieces[i][j].color
 				
 				# Verificar matches especiales primero (T-shape)
 				if is_t_shape(i, j):
-					reemplazar_con_pieza_especial(i, j, current_color, "adjacent")
+					special_pieces_to_create.append({
+						"pos": Vector2(i + 1, j),
+						"color": current_color,
+						"type": "adjacent",
+						"match_positions": get_t_shape_positions(i, j)
+					})
 					matches_found = true
 					continue
 				
 				# Verificar matches horizontales de 5
 				if i <= width - 5 and is_match(i, j, Vector2(1, 0), 5):
-					reemplazar_con_pieza_especial(i + 2, j, current_color, "rainbow")
+					special_pieces_to_create.append({
+						"pos": Vector2(i + 2, j),
+						"color": current_color,
+						"type": "rainbow",
+						"match_positions": get_line_positions(i, j, Vector2(1, 0), 5)
+					})
 					matches_found = true
 					continue
 				
 				# Verificar matches verticales de 5
 				if j <= height - 5 and is_match(i, j, Vector2(0, 1), 5):
-					reemplazar_con_pieza_especial(i, j + 2, current_color, "rainbow")
+					special_pieces_to_create.append({
+						"pos": Vector2(i, j + 2),
+						"color": current_color,
+						"type": "rainbow",
+						"match_positions": get_line_positions(i, j, Vector2(0, 1), 5)
+					})
 					matches_found = true
 					continue
 				
 				# Verificar matches horizontales de 4
 				if i <= width - 4 and is_match(i, j, Vector2(1, 0), 4):
-					reemplazar_con_pieza_especial(i + 1, j, current_color, "row")
+					special_pieces_to_create.append({
+						"pos": Vector2(i + 1, j),
+						"color": current_color,
+						"type": "row",
+						"match_positions": get_line_positions(i, j, Vector2(1, 0), 4)
+					})
 					matches_found = true
 					continue
 				
 				# Verificar matches verticales de 4
 				if j <= height - 4 and is_match(i, j, Vector2(0, 1), 4):
-					reemplazar_con_pieza_especial(i, j + 1, current_color, "column")
+					special_pieces_to_create.append({
+						"pos": Vector2(i, j + 1),
+						"color": current_color,
+						"type": "column",
+						"match_positions": get_line_positions(i, j, Vector2(0, 1), 4)
+					})
 					matches_found = true
 					continue
 				
 				# Verificar matches horizontales de 3
 				if i <= width - 3 and is_match(i, j, Vector2(1, 0), 3):
-					marcar_match(i, j, Vector2(1, 0), 3)
+					pieces_to_remove.append_array(get_line_positions(i, j, Vector2(1, 0), 3))
 					matches_found = true
 				
 				# Verificar matches verticales de 3  
 				if j <= height - 3 and is_match(i, j, Vector2(0, 1), 3):
-					marcar_match(i, j, Vector2(0, 1), 3)
+					pieces_to_remove.append_array(get_line_positions(i, j, Vector2(0, 1), 3))
 					matches_found = true
+	
+	# Procesar piezas especiales
+	for special in special_pieces_to_create:
+		crear_pieza_especial(special.pos, special.color, special.type)
+		# Marcar las piezas del match para eliminación (excepto donde va la especial)
+		for pos in special.match_positions:
+			if pos != special.pos and in_grid(pos.x, pos.y) and all_pieces[pos.x][pos.y] != null:
+				all_pieces[pos.x][pos.y].matched = true
+				all_pieces[pos.x][pos.y].dim()
+	
+	# Marcar piezas normales para eliminación
+	for pos in pieces_to_remove:
+		if in_grid(pos.x, pos.y) and all_pieces[pos.x][pos.y] != null:
+			all_pieces[pos.x][pos.y].matched = true
+			all_pieces[pos.x][pos.y].dim()
 
 	if matches_found:
 		get_parent().get_node("destroy_timer").start()
@@ -246,42 +289,28 @@ func find_matches():
 			swap_back()
 
 
-func reemplazar_con_pieza_especial(i, j, color, tipo):
-	print('Creando pieza especial: ', tipo, ' en posición: ', i, ', ', j)
-	
-	# Marcar todas las piezas del match para eliminación primero
-	if tipo == "row":
-		# Marcar 4 piezas horizontales
-		for k in range(4):
-			if in_grid(i + k - 1, j) and all_pieces[i + k - 1][j]:
-				all_pieces[i + k - 1][j].matched = true
-				all_pieces[i + k - 1][j].dim()
-	elif tipo == "column":
-		# Marcar 4 piezas verticales
-		for k in range(4):
-			if in_grid(i, j + k - 1) and all_pieces[i][j + k - 1]:
-				all_pieces[i][j + k - 1].matched = true
-				all_pieces[i][j + k - 1].dim()
-	elif tipo == "rainbow":
-		# Marcar 5 piezas
-		for k in range(5):
-			if in_grid(i + k - 2, j) and all_pieces[i + k - 2][j]:
-				all_pieces[i + k - 2][j].matched = true
-				all_pieces[i + k - 2][j].dim()
-	elif tipo == "adjacent":
-		# Marcar las piezas del patrón T
-		# Primero marcar las 3 horizontales
-		for k in range(3):
-			if in_grid(i + k, j) and all_pieces[i + k][j]:
-				all_pieces[i + k][j].matched = true
-				all_pieces[i + k][j].dim()
-		# Luego marcar la pieza vertical que forma la T
-		if in_grid(i + 1, j - 1) and all_pieces[i + 1][j - 1]:
-			all_pieces[i + 1][j - 1].matched = true
-			all_pieces[i + 1][j - 1].dim()
-		if in_grid(i + 1, j + 1) and all_pieces[i + 1][j + 1]:
-			all_pieces[i + 1][j + 1].matched = true
-			all_pieces[i + 1][j + 1].dim()
+func get_line_positions(i, j, dir: Vector2, length: int) -> Array:
+	var positions = []
+	for k in range(length):
+		var x = i + k * dir.x
+		var y = j + k * dir.y
+		positions.append(Vector2(x, y))
+	return positions
+
+func get_t_shape_positions(i, j) -> Array:
+	var positions = []
+	# Las 3 horizontales
+	for k in range(3):
+		positions.append(Vector2(i + k, j))
+	# La pieza vertical que forma la T
+	if in_grid(i + 1, j - 1) and all_pieces[i + 1][j - 1] != null and all_pieces[i + 1][j - 1].color == all_pieces[i][j].color:
+		positions.append(Vector2(i + 1, j - 1))
+	if in_grid(i + 1, j + 1) and all_pieces[i + 1][j + 1] != null and all_pieces[i + 1][j + 1].color == all_pieces[i][j].color:
+		positions.append(Vector2(i + 1, j + 1))
+	return positions
+
+func crear_pieza_especial(pos: Vector2, color: String, tipo: String):
+	print('Creando pieza especial: ', tipo, ' en posición: ', pos)
 	
 	# Crear la pieza especial
 	var rand = randi_range(0, possible_pieces.size() - 1)
@@ -289,15 +318,14 @@ func reemplazar_con_pieza_especial(i, j, color, tipo):
 	pieza_especial.color = color
 	pieza_especial.set_special_type(tipo)
 	
-	# Eliminar la pieza en la posición donde se va a crear la especial
-	if all_pieces[i][j]:
-		all_pieces[i][j].matched = true
-		all_pieces[i][j].dim()
+	# Eliminar la pieza existente en esa posición si existe
+	if all_pieces[pos.x][pos.y] != null:
+		all_pieces[pos.x][pos.y].queue_free()
 	
-	# Colocar la pieza especial inmediatamente
+	# Colocar la pieza especial
 	add_child(pieza_especial)
-	pieza_especial.position = grid_to_pixel(i, j)
-	all_pieces[i][j] = pieza_especial
+	pieza_especial.position = grid_to_pixel(pos.x, pos.y)
+	all_pieces[pos.x][pos.y] = pieza_especial
 
 func marcar_match(i, j, dir, length):
 	for k in range(length):
