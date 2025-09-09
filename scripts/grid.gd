@@ -137,6 +137,8 @@ func swap_pieces(column, row, direction: Vector2):
 	first_piece.move(grid_to_pixel(column + direction.x, row + direction.y))
 	other_piece.move(grid_to_pixel(column, row))
 	if not move_checked:
+		# Marcar que se debe deducir un movimiento si este swap es válido
+		deduct_move = true
 		find_matches()
 
 func store_info(first_piece, other_piece, place, direction):
@@ -150,6 +152,7 @@ func swap_back():
 		swap_pieces(last_place.x, last_place.y, last_direction)
 	state = MOVE
 	move_checked = false
+	deduct_move = false  # Reset deduct_move cuando el movimiento no es válido
 
 func touch_difference(grid_1, grid_2):
 	var difference = grid_2 - grid_1
@@ -328,8 +331,9 @@ func destroy_matched():
 	if was_matched:
 		score += matched_count * 10
 		emit_signal("score_changed", score)
-		moves -= 1 if deduct_move else 0
+		# Solo reducir movimientos si este es el primer match del intercambio
 		if deduct_move:
+			moves -= 1
 			emit_signal("moves_changed", moves)
 			deduct_move = false
 		get_parent().get_node("collapse_timer").start()
@@ -442,8 +446,8 @@ func check_after_refill():
 				get_parent().get_node("destroy_timer").start()
 				return
 	state = MOVE
-	
 	move_checked = false
+	deduct_move = false  # Reset deduct_move cuando terminan las cadenas
 
 func _on_destroy_timer_timeout():
 	print("destroy")
@@ -458,4 +462,9 @@ func _on_refill_timer_timeout():
 	
 func game_over():
 	state = WAIT
-	print("game over")
+	print("¡GAME OVER! Puntuación final: ", score)
+	# Detener el temporizador de tiempo si existe
+	var top_ui = get_parent().get_node("top_ui")
+	if top_ui and top_ui.time_timer:
+		top_ui.time_timer.stop()
+	# Aquí puedes agregar más lógica para mostrar una pantalla de game over
