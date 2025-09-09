@@ -1,4 +1,4 @@
-# Match-3 Game - Segundo Parcial Informática II
+# Match-3 Game - Segundo Parcial Infografia 
 
 ## Desarrolladores
 - **Adrian Coello**
