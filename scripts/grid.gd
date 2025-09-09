@@ -195,77 +195,107 @@ func find_matches():
 	var matches_found = false
 	var pieces_to_remove = []
 	var special_pieces_to_create = []
+	var already_processed = []  # Para evitar duplicados
 	
 	# Primero, encontrar todos los matches sin eliminar nada
 	for i in width:
 		for j in height:
 			if all_pieces[i][j] != null and not all_pieces[i][j].matched:
 				var current_color = all_pieces[i][j].color
+				var pos_key = str(i) + "," + str(j)
 				
-				# Verificar matches especiales primero (T-shape)
-				if is_t_shape(i, j):
-					special_pieces_to_create.append({
-						"pos": Vector2(i + 1, j),
-						"color": current_color,
-						"type": "adjacent",
-						"match_positions": get_t_shape_positions(i, j)
-					})
-					matches_found = true
+				# Evitar procesar la misma pieza múltiples veces
+				if pos_key in already_processed:
 					continue
 				
-				# Verificar matches horizontales de 5
+				var match_created = false
+				
+				# PRIORIDAD 1: Verificar matches horizontales de 5 PRIMERO
 				if i <= width - 5 and is_match(i, j, Vector2(1, 0), 5):
+					print("Detectado match horizontal de 5 en ", i, ",", j)
 					special_pieces_to_create.append({
 						"pos": Vector2(i + 2, j),
 						"color": current_color,
 						"type": "rainbow",
 						"match_positions": get_line_positions(i, j, Vector2(1, 0), 5)
 					})
+					# Marcar todas las posiciones como procesadas
+					for k in range(5):
+						already_processed.append(str(i + k) + "," + str(j))
 					matches_found = true
-					continue
+					match_created = true
 				
-				# Verificar matches verticales de 5
-				if j <= height - 5 and is_match(i, j, Vector2(0, 1), 5):
+				# PRIORIDAD 2: Verificar matches verticales de 5
+				elif j <= height - 5 and is_match(i, j, Vector2(0, 1), 5):
+					print("Detectado match vertical de 5 en ", i, ",", j)
 					special_pieces_to_create.append({
 						"pos": Vector2(i, j + 2),
 						"color": current_color,
 						"type": "rainbow",
 						"match_positions": get_line_positions(i, j, Vector2(0, 1), 5)
 					})
+					# Marcar todas las posiciones como procesadas
+					for k in range(5):
+						already_processed.append(str(i) + "," + str(j + k))
 					matches_found = true
-					continue
+					match_created = true
 				
-				# Verificar matches horizontales de 4
-				if i <= width - 4 and is_match(i, j, Vector2(1, 0), 4):
+				# PRIORIDAD 3: Verificar matches especiales (T-shape)
+				elif is_t_shape(i, j):
+					print("Detectado T-shape en ", i, ",", j)
+					special_pieces_to_create.append({
+						"pos": Vector2(i + 1, j),
+						"color": current_color,
+						"type": "adjacent",
+						"match_positions": get_t_shape_positions(i, j)
+					})
+					var t_positions = get_t_shape_positions(i, j)
+					for pos in t_positions:
+						already_processed.append(str(pos.x) + "," + str(pos.y))
+					matches_found = true
+					match_created = true
+				
+				# PRIORIDAD 4: Verificar matches horizontales de 4
+				elif i <= width - 4 and is_match(i, j, Vector2(1, 0), 4):
+					print("Detectado match horizontal de 4 en ", i, ",", j)
 					special_pieces_to_create.append({
 						"pos": Vector2(i + 1, j),
 						"color": current_color,
 						"type": "row",
 						"match_positions": get_line_positions(i, j, Vector2(1, 0), 4)
 					})
+					# Marcar todas las posiciones como procesadas
+					for k in range(4):
+						already_processed.append(str(i + k) + "," + str(j))
 					matches_found = true
-					continue
+					match_created = true
 				
-				# Verificar matches verticales de 4
-				if j <= height - 4 and is_match(i, j, Vector2(0, 1), 4):
+				# PRIORIDAD 5: Verificar matches verticales de 4
+				elif j <= height - 4 and is_match(i, j, Vector2(0, 1), 4):
+					print("Detectado match vertical de 4 en ", i, ",", j)
 					special_pieces_to_create.append({
 						"pos": Vector2(i, j + 1),
 						"color": current_color,
 						"type": "column",
 						"match_positions": get_line_positions(i, j, Vector2(0, 1), 4)
 					})
+					# Marcar todas las posiciones como procesadas
+					for k in range(4):
+						already_processed.append(str(i) + "," + str(j + k))
 					matches_found = true
-					continue
+					match_created = true
 				
-				# Verificar matches horizontales de 3
-				if i <= width - 3 and is_match(i, j, Vector2(1, 0), 3):
-					pieces_to_remove.append_array(get_line_positions(i, j, Vector2(1, 0), 3))
-					matches_found = true
-				
-				# Verificar matches verticales de 3  
-				if j <= height - 3 and is_match(i, j, Vector2(0, 1), 3):
-					pieces_to_remove.append_array(get_line_positions(i, j, Vector2(0, 1), 3))
-					matches_found = true
+				# PRIORIDAD 6: Verificar matches normales de 3 (solo si no se creó match especial)
+				if not match_created:
+					# Verificar matches horizontales de 3
+					if i <= width - 3 and is_match(i, j, Vector2(1, 0), 3):
+						pieces_to_remove.append_array(get_line_positions(i, j, Vector2(1, 0), 3))
+						matches_found = true
+					
+					# Verificar matches verticales de 3  
+					if j <= height - 3 and is_match(i, j, Vector2(0, 1), 3):
+						pieces_to_remove.append_array(get_line_positions(i, j, Vector2(0, 1), 3))
+						matches_found = true
 	
 	# PRIMERO marcar piezas normales para eliminación
 	for pos in pieces_to_remove:
