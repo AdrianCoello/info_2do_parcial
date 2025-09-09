@@ -86,7 +86,7 @@ El juego utiliza assets gráficos y de audio especializados para Match-3:
 
 ## Estado del Proyecto
 
-**Versión actual**: Implementación completa con todas las mecánicas funcionales
+**Versión actual**: Implementación completa con todas las mecánicas funcionales  
 **Branch**: `main`
 
 ### Últimas mejoras implementadas:
